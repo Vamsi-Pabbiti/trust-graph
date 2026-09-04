@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "build": "npm run build --prefix ../client",
+    "build": "cd ../client && npm install && npm run build",
     "dev": "nodemon server.js",
     "seed": "node seed/seed.js",
     "test": "vitest run"
