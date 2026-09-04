@@ -3,6 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 import authRoutes from './routes/authRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
@@ -18,10 +21,15 @@ import systemRoutes from './routes/systemRoutes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 // Security and Logging Middlewares
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Allow inline scripts and assets for production SPA
+}));
 app.use(cors({
   origin: process.env.CLIENT_URL || '*',
   credentials: true
@@ -51,15 +59,25 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api', systemRoutes);
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({
-    name: 'TRUST GRAPH API',
-    status: 'online',
-    documentation: '/docs',
-    health: '/api/health'
+// Serve Frontend Static SPA if client/dist exists
+const clientDistPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDistPath, 'index.html'));
   });
-});
+} else {
+  // Root API status endpoint
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'TRUST GRAPH API',
+      status: 'online',
+      documentation: '/docs',
+      health: '/api/health'
+    });
+  });
+}
 
 // Centralized Error Handler
 app.use(errorHandler);
