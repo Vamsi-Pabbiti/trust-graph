@@ -1,0 +1,40 @@
+name: TRUST GRAPH CI Workflow
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Monorepo Dependencies
+        run: npm install
+
+      - name: Install Server Dependencies & Run Tests
+        run: |
+          cd server
+          npm install
+          npm test
+
+      - name: Install Client Dependencies & Build Frontend
+        run: |
+          cd client
+          npm install
+          npm run build
