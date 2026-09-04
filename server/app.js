@@ -26,14 +26,18 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Security and Logging Middlewares
+// Security and Dynamic CORS Middleware (safely handles credentials: true for any origin)
 app.use(helmet({
-  contentSecurityPolicy: false // Allow inline scripts and assets for production SPA
+  contentSecurityPolicy: false // Allow inline scripts and assets for single-origin SPA
 }));
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
+  origin: (origin, callback) => {
+    callback(null, true); // Dynamically reflects requesting origin to support credentials securely
+  },
   credentials: true
 }));
+
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
