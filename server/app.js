@@ -26,27 +26,37 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Security and Dynamic CORS Middleware (safely handles credentials: true for any origin)
+// Trust reverse proxy (Render, Cloudflare, Heroku)
+app.set('trust proxy', 1);
+
+// Security & Robust CORS Middleware
 app.use(helmet({
-  contentSecurityPolicy: false // Allow inline scripts and assets for single-origin SPA
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
+// 'origin: true' dynamically echoes req.headers.origin to safely support credentials across browsers
 app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, true); // Dynamically reflects requesting origin to support credentials securely
-  },
-  credentials: true
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle Preflight OPTIONS requests for all endpoints
+app.options('*', cors());
 
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiter for API
+// Safe Rate limiter for API
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 mins
+  windowMs: 15 * 60 * 1000,
   max: 1000,
-  message: { success: false, message: 'Too many requests from this IP, please try again later.' }
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many requests, please try again later.' }
 });
 app.use('/api', limiter);
 

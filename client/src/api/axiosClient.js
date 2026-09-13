@@ -1,10 +1,19 @@
 import axios from 'axios';
 
-// Default to relative '/api' in production so it hits the current host automatically
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+// Dynamically construct absolute API URL from window.location.origin if VITE_API_URL is omitted
+const getBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl;
+  }
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return `${window.location.origin}/api`;
+  }
+  return '/api';
+};
 
 const axiosClient = axios.create({
-  baseURL: API_URL,
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json'
   }
@@ -29,7 +38,10 @@ axiosClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-    return Promise.reject(error.response ? error.response.data : error);
+    const message = (error.response && error.response.data && error.response.data.message)
+      ? error.response.data.message
+      : (error.message || 'Network communication error');
+    return Promise.reject(new Error(message));
   }
 );
 
