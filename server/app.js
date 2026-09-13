@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
@@ -29,22 +28,30 @@ const app = express();
 // Trust reverse proxy (Render, Cloudflare, Heroku)
 app.set('trust proxy', 1);
 
-// Security & Robust CORS Middleware
+// Security Headers via Helmet
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// 'origin: true' dynamically echoes req.headers.origin to safely support credentials across browsers
-app.use(cors({
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Fail-Proof Universal CORS & Preflight Middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 
-// Handle Preflight OPTIONS requests for all endpoints
-app.options('*', cors());
+  // Answer OPTIONS preflight checks immediately with 200 OK
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
